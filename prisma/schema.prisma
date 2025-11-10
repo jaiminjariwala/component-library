@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// This file defines your entire database structure - like how tables, columns, and relationships are set up.
+/*
+  Prisma then uses this file to:
+  - Generate SQL migrations (to actually create these tables in your PostgreSQL DB),
+  - Generate a TypeScript client that lets you query the database safely (no SQL needed).
+*/
+
+// This tells Prisma to generate a client library for you — a TypeScript API that you’ll use in your app.
+generator client {
+  provider = "prisma-client-js"   // generates typescript client
+}
+
+// Use PostgreSQL as the database, and generate a TypeScript client for it.
+datasource db {
+  provider = "postgresql"           // using PostgreSQL
+  url      = env("DATABASE_URL")    // connection string from .env
+}
+
+// main table: stores all UI components
+// defining a table named Component
+// Each field becomes a column, and Prisma automatically maps data types.
+model Component {
+  // 
+  id           String   @id @default(cuid())  // Unique ID (auto-generated)
+  name         String                         // for ex. "Glassmorphism Navbar"
+  description  String                         // Short summary
+  category     String                         // for ex. "navbar", "button", "card" used for filtering
+  tags         String[]                       // ["glassmorphism", "modern"]
+  filePath     String                         // Path to component file
+  componentPath String                        // Import path
+  code         String   @db.Text              // Full source code
+  dependencies String[]                       // ["lucide-react"]
+  responsive   Boolean  @default(true)        // metadata flags
+  darkMode     Boolean  @default(true)        // metadata flags
+  views        Int      @default(0)           // View counter
+  copies       Int      @default(0)           // Copy counter
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  favorites    Favorite[]                     // Relation to favorites
+  versions     ComponentVersion[]             // Version history
+  
+  @@index([category]) // The @@index() lines create indexes on category and tags for faster searches.
+  @@index([tags])
+}
+
+// This defines a relationship table between User and Component.
+// user favorites (many-to-many relationship)
+model Favorite {
+  id          String    @id @default(cuid())
+  userId      String
+  componentId String
+  component   Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  
+  @@unique([userId, componentId])             // One user can only favorite once
+  @@index([userId])
+}
+
+model ComponentVersion {
+  id          String    @id @default(cuid())
+  componentId String
+  component   Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  version     String
+  code        String    @db.Text
+  changelog   String?
+  createdAt   DateTime  @default(now())
+  
+  @@index([componentId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("user") // "user" or "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
